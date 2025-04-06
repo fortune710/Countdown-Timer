@@ -1,18 +1,18 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "countdown-timer",
+  "productName": "CAC Countdown Timer",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.countdown.timer",
   "build": {
-    "frontendDist": "../build",
+    "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "bun dev",
-    "beforeBuildCommand": "bun build"
+    "beforeBuildCommand": "bun build index.html --outdir ../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "Countdown Timer",
+        "title": "CAC Countdown Timer",
         "width": 800,
         "height": 600,
         "resizable": true,

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { cn, convertSecondsToMinutes } from "@/lib/utils";
+import { Play, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ScheduleItem {
     title: string,
@@ -15,96 +18,6 @@ export default function TimerPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-//   useEffect(() => {
-//     loadSchedules();
-//   }, []);
-
-//   useEffect(() => {
-//     // Setup event listener
-//     const setupListener = async () => {
-//         const unlisten = await listen("timer-update", (event: any) => {
-//           setTimeLeft(event.payload);
-//           if (event.payload === 0) {
-//             moveToNextEvent();
-//           }
-//         });
-        
-//         return unlisten;
-//       };
-      
-//       const cleanup = setupListener();
-      
-//       return () => {
-//         cleanup.then(unlisten => unlisten());
-//     };
-//   }, [currentEventIndex])
-
-//   const loadSchedules = async () => {
-//     try {
-//       const data: string = await invoke("load_schedules");
-//       const parsedSchedules = JSON.parse(data) as Array<ScheduleItem>;
-      
-//       if (parsedSchedules.length > 0) {
-//         setSchedules(parsedSchedules);
-//         setTimeLeft(parsedSchedules[0].duration);
-//       } else {
-//         // Use default schedule if none is loaded
-//         const defaultSchedule = [
-//           { title: "Workout", duration: 10 },
-//           { title: "Meditation", duration: 5 },
-//           { title: "Break", duration: 10 }
-//         ];
-//         setSchedules(defaultSchedule);
-//         setTimeLeft(defaultSchedule[0].duration);
-//         // Save the default schedule
-//         await invoke("save_schedules", { schedules: JSON.stringify(defaultSchedule) });
-//       }
-//       setIsLoaded(true);
-//     } catch (error) {
-//       console.error("Failed to load schedules:", error);
-//       // Fallback to default schedule
-//       const defaultSchedule = [
-//         { title: "Workout", duration: 10 },
-//         { title: "Meditation", duration: 5 },
-//         { title: "Break", duration: 10 }
-//       ];
-//       setSchedules(defaultSchedule);
-//       setTimeLeft(defaultSchedule[0].duration);
-//       setIsLoaded(true);
-//     }
-//   };
-
-//   const startTimer = () => {
-//     if (schedules.length > currentEventIndex) {
-//       invoke("start_timer", { seconds: schedules[currentEventIndex].duration });
-//       setIsRunning(true);
-//     }
-//   };
-
-//   const moveToNextEvent = () => {
-//     setIsRunning(false);
-//     if (currentEventIndex < schedules.length - 1) {
-//         const nextIndex = currentEventIndex + 1;
-//         setCurrentEventIndex(nextIndex);
-//         setTimeLeft(schedules[nextIndex].duration);
-//         // Automatically start the next timer
-//         setTimeout(() => {
-//           invoke("start_timer", { seconds: schedules[nextIndex].duration });
-//           setIsRunning(true);
-//         }, 100); // Small delay to ensure state updates complete
-//     } else {
-//       alert("All events completed!");
-//       resetSchedule();
-//     }
-//   };
-
-//   const resetSchedule = () => {
-//     setIsRunning(false);
-//     setCurrentEventIndex(0);
-//     if (schedules.length > 0) {
-//       setTimeLeft(schedules[0].duration);
-//     }
-//   };
   //Use these
   useEffect(() => {
     loadSchedules();
@@ -112,7 +25,6 @@ export default function TimerPage() {
 
   const loadSchedules = async () => {
       const data: string = await invoke("load_schedules");
-      alert(JSON.parse(data).length)
       setSchedules(JSON.parse(data));
       setIsLoaded(true);
   };
@@ -120,9 +32,6 @@ export default function TimerPage() {
   useEffect(() => {
     const unlisten = listen("timer-update", (event: any) => {
       setTimeLeft(event.payload);
-      if (event.payload === 0) {
-        moveToNextEvent();
-      }
     });
 
     return () => {
@@ -130,8 +39,16 @@ export default function TimerPage() {
     }
   }, [currentEventIndex, schedules]);
 
-  const startTimer = () => {
-    invoke("start_timer", { seconds: schedules[currentEventIndex].duration });
+  useEffect(() => {
+    if (timeLeft === 0 && currentEventIndex < schedules.length - 1) {
+      moveToNextEvent();
+    }
+
+  }, [timeLeft])
+
+  const startTimer = (duration?: number) => {
+    const timeStart = schedules[currentEventIndex].duration;
+    invoke("start_timer", { seconds: duration ?? timeStart });
     setIsRunning(true);
   };
 
@@ -141,18 +58,20 @@ export default function TimerPage() {
     console.log("Current index:", currentEventIndex);
 
     if (currentEventIndex < schedules.length - 1) {
+      const nextIndex = currentEventIndex + 1;
       setCurrentEventIndex((prev) => prev + 1);
-      setTimeLeft(schedules[currentEventIndex + 1].duration);
-      startTimer();
+
+      setTimeLeft(schedules[nextIndex].duration);
+      startTimer(schedules[nextIndex].duration);
     } else {
-        alert(currentEventIndex)
-        alert(schedules.length - 1)
+
     }
   };
 
   const resetSchedule = () => {
     setIsRunning(false);
     setCurrentEventIndex(0);
+    invoke("reset_timer")
     setTimeLeft(schedules[0].duration);
   };
 
@@ -161,23 +80,35 @@ export default function TimerPage() {
   }
 
   if (schedules.length === 0) {
-    return <div>No schedules found. Please create some schedules.</div>;
+    return <div>No schedules found. Please create some events.</div>;
   }
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
-      <h1>Event Schedule</h1>
-      <h2>{schedules[currentEventIndex]?.title || "No event"}</h2>
-      <h2>{timeLeft} seconds left</h2>
-      <button onClick={startTimer} disabled={isRunning}>Start</button>
-      <button onClick={() => setIsRunning(false)}>Pause</button>
-      <button onClick={resetSchedule}>Reset</button>
-      <h3>Upcoming Events:</h3>
-      <ul>
-        {schedules.slice(currentEventIndex + 1).map((event, index) => (
-          <li key={index}>{event.title} ({event.duration}s)</li>
-        ))}
-      </ul>
+      <h1 className="text-2xl font-medium">Currently Happening</h1>
+
+      <div className="my-10">
+        <h2 className="text-xl font-medium">{schedules[currentEventIndex]?.title || "No event"}</h2>
+        <h1 className={cn("text-9xl", timeLeft <= 300 ? "text-destructive" : "text-zinc-800")}>
+          {convertSecondsToMinutes(Number(timeLeft))}
+        </h1>
+      </div>
+
+      <Button variant="outline" className="mr-4" size="icon" disabled={isRunning} onClick={() => startTimer()}>
+        <Play className="size-4 text-zinc-800" />
+      </Button>
+      <Button variant="outline" size="icon" onClick={resetSchedule}>
+        <RotateCcw className="text-destructive size-4" />
+      </Button>
+
+      <div className="mt-5">
+        <h3 className="font-medium">Next Event</h3>
+        <ul>
+          {schedules.slice(currentEventIndex + 1, currentEventIndex + 2).map((event, index) => (
+            <li className="text-2xl font-semibold" key={index}>{event.title}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

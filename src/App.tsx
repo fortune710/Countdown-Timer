@@ -6,8 +6,8 @@ import './App.css'
 function App() {
   return (
     <BrowserRouter>
-      <nav>
-        <Link to="/">Schedule Entry</Link> | <Link to="/timer">Timer</Link>
+      <nav className='w-full flex items-center justify-center gap-4 py-3'>
+        <Link className='font-medium' to="/">Schedule Entry</Link> | <Link className='font-medium' to="/timer">Timer</Link>
       </nav>
       
       <Routes>
