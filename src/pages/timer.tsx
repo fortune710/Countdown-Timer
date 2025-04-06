@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { cn, convertSecondsToMinutes } from "@/lib/utils";
-import { Play, RotateCcw } from "lucide-react";
+import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ScheduleItem {
@@ -68,12 +68,12 @@ export default function TimerPage() {
     }
   };
 
-  const resetSchedule = () => {
-    setIsRunning(false);
-    setCurrentEventIndex(0);
-    invoke("reset_timer")
-    setTimeLeft(schedules[0].duration);
-  };
+  // const resetSchedule = () => {
+  //   setIsRunning(false);
+  //   setCurrentEventIndex(0);
+  //   invoke("reset_timer")
+  //   setTimeLeft(schedules[0].duration);
+  // };
 
   if (!isLoaded) {
     return <div>Loading schedules...</div>;
@@ -97,9 +97,9 @@ export default function TimerPage() {
       <Button variant="outline" className="mr-4" size="icon" disabled={isRunning} onClick={() => startTimer()}>
         <Play className="size-4 text-zinc-800" />
       </Button>
-      <Button variant="outline" size="icon" onClick={resetSchedule}>
+      {/* <Button variant="outline" size="icon" onClick={resetSchedule}>
         <RotateCcw className="text-destructive size-4" />
-      </Button>
+      </Button> */}
 
       <div className="mt-5">
         <h3 className="font-medium">Next Event</h3>
