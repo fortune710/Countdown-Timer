@@ -73,11 +73,11 @@ export default function ScheduleEntryPage() {
 
   return (
     <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <main className="w-screen grid grid-cols-2 gap-4 h-screen">
+      <main className="w-screen grid grid-cols-2 gap-2 h-screen">
         <section className="pl-2">
           <h1 className="text-center mb-3 font-medium">Event Scheduler</h1>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6">
             <div className="grid gap-2">
               <Label htmlFor="title">Event Title</Label>
               <Input 
@@ -104,7 +104,7 @@ export default function ScheduleEntryPage() {
 
         <section className="pr-4">
           <h3 className="font-medium text-center">Upcoming Events:</h3>
-          <ScrollArea className="h-[450px] mt-3">
+          <ScrollArea className="h-[450px] mt-3 px-6">
             <ul className="list-none">
               {schedules.map((event, index) => (
                 <ScheduleCard 

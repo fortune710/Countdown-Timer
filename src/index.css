@@ -131,3 +131,31 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ... existing styles ... */
+
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; } /* Make it dim but not fully disappear */
+}
+
+.time-up-text {
+  font-weight: bold;
+  animation: flash 1.2s infinite step-end; /* Use step-end for a sharper flash */
+  @apply text-destructive
+}
+
+/* Adjust existing h1/h2 if needed, or rely on utility classes */
+.event-title {
+  @apply text-5xl font-semibold; /* Example using Tailwind */
+}
+
+.time-display {
+   @apply text-[280px] font-bold; /* Example using Tailwind */
+}
+
+.time-display-low {
+  @apply text-destructive; /* Red color when time is low but not up */
+}
+
+/* ... rest of the file ... */

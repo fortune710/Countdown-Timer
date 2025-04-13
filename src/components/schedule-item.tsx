@@ -87,7 +87,11 @@ export function ScheduleCard(props: {
                     <div className="font-medium">{props.event.title}</div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
-                        <span>{convertSecondsToMinutes(Number(props.event.duration))} minutes</span>
+                        <span>
+                            {props.event.duration < 60
+                                ? `${props.event.duration} seconds`
+                                : `${convertSecondsToMinutes(Number(props.event.duration))} minutes`}
+                        </span>
                     </div>
                 </div>
 
