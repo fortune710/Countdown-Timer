@@ -35,8 +35,6 @@ fn load_schedules() -> String {
 #[tauri::command]
 fn start_timer(window: tauri::Window, seconds: u32) {
     // Before starting a new timer, ensure any existing timer is stopped
-    reset_timer_internal(&window);
-
     stop_running_timer_internal(); // Use the internal stop function
 
     // Set the stop signal to false at the start of the new timer

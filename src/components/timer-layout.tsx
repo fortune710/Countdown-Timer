@@ -54,7 +54,7 @@ export default function TimerPage({
   const currentEvent = schedules[currentEventIndex];
   const displayTitle = currentEvent?.title || "Event";
   const canStartNext = currentEventIndex < schedules.length - 1;
-  const isPlayDisabled = isRunning || (isTimeUp && !canStartNext);
+  const isPlayDisabled = isRunning;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[90vh] p-8 text-center bg-noise">

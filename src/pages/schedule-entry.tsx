@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -22,43 +21,27 @@ interface ScheduleItem {
   id: string
 }
 
-interface AppScheduleItem {
-  title: string,
-  duration: number
-}
-
 interface ScheduleEntryPageProps {
   currentEventIndex: number;
-  appSchedules: Array<AppScheduleItem>;
+  schedules: Array<ScheduleItem>;
+  addSchedule: (title: string, durationInSeconds: number) => void;
+  deleteSchedule: (id: string) => void;
+  updateSchedule: (id: string, title: string, durationInSeconds: number) => void;
+  reorderSchedules: (updatedSchedules: ScheduleItem[]) => void;
 }
 
-export default function ScheduleEntryPage({ currentEventIndex, appSchedules }: ScheduleEntryPageProps) {
-  const [schedules, setSchedules] = useState<Array<ScheduleItem>>([]);
+export default function ScheduleEntryPage({
+  currentEventIndex,
+  schedules,
+  addSchedule,
+  deleteSchedule,
+  updateSchedule,
+  reorderSchedules
+}: ScheduleEntryPageProps) {
   const [newTitle, setNewTitle] = useState("");
   const [newDuration, setNewDuration] = useState("");
 
-
-  //We can afford to use useEffect here wihtout caching since it's a small scale app
-  useEffect(() => {
-    loadSchedules();
-  }, []);
-
-  const loadSchedules = async () => {
-    const data: string = await invoke("load_schedules");
-    const schedules: Array<ScheduleItem> = JSON.parse(data).map((item: ScheduleItem) => ({
-      title: item.title,
-      duration: item.duration,
-      id: `${item.title}-${item.duration}`
-    }))
-    setSchedules(schedules);
-  };
-
-  const saveSchedules = async (updatedSchedules: ScheduleItem[]) => {
-    setSchedules(updatedSchedules);
-    await invoke("save_schedules", { schedules: JSON.stringify(updatedSchedules) });
-  };
-
-  const addSchedule = () => {
+  const handleAddSchedule = () => {
     // Validation for title and duration
     if (!newTitle.trim()) {
       toast.error("Title is required.", {
@@ -67,7 +50,7 @@ export default function ScheduleEntryPage({ currentEventIndex, appSchedules }: S
       return;
     }
 
-    // Title uniqueness validation (optional, comment out if not wanted)
+    // Title uniqueness validation (optional)
     if (schedules.some(item => item.title.trim().toLowerCase() === newTitle.trim().toLowerCase())) {
       toast.error("Title must be unique.", {
         description: "A schedule item with this title already exists."
@@ -82,7 +65,6 @@ export default function ScheduleEntryPage({ currentEventIndex, appSchedules }: S
       return;
     }
 
-    // Duration must be a positive integer and less than some max (e.g., 1440 minutes = 24 hours)
     const durationNum = Number(newDuration);
     if (
       isNaN(durationNum) ||
@@ -97,73 +79,29 @@ export default function ScheduleEntryPage({ currentEventIndex, appSchedules }: S
       return;
     }
 
-    const updatedSchedules = [
-      ...schedules,
-      { title: newTitle.trim(), duration: durationNum * 60, id: `${newTitle.trim()}-${durationNum * 60}` }
-    ];
-    saveSchedules(updatedSchedules);
+    addSchedule(newTitle.trim(), durationNum * 60);
     setNewTitle("");
     setNewDuration("");
   };
 
-  const deleteSchedule = (id: string) => {
-    // Find the index of the item being deleted
-    const itemIndex = schedules.findIndex((item) => item.id === id);
-
-    // Check if this item matches the currently running event
-    // Match by comparing title and duration with the current event in appSchedules
-    if (itemIndex === currentEventIndex && appSchedules.length > 0 && currentEventIndex < appSchedules.length) {
-      const currentEvent = appSchedules[currentEventIndex];
-      const itemToDelete = schedules[itemIndex];
-
-      // Check if title and duration match (accounting for duration being in seconds in appSchedules)
-      if (currentEvent.title === itemToDelete.title && currentEvent.duration === itemToDelete.duration) {
-        toast.error("Cannot delete the currently running event", {
-          description: "Please wait for the event to finish or reset the timer before deleting.",
-        });
-        return;
-      }
-    }
-
-    const updatedSchedules = schedules.filter((item) => item.id !== id);
-    saveSchedules(updatedSchedules);
+  const onDeleteSchedule = (id: string) => {
+    deleteSchedule(id);
   };
 
-  const updateSchedule = (id: string, title: string, duration: number) => {
-    const updatedSchedules = schedules.map((item) =>
-      item.id === id
-        ? { ...item, title, duration, id: `${title}-${duration}` }
-        : item
-    );
-    saveSchedules(updatedSchedules);
+  const onUpdateSchedule = (id: string, title: string, duration: number) => {
+    updateSchedule(id, title, duration);
   };
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
 
-    if (active.id === over.id) return;
+    if (!over || active.id === over.id) return;
 
     const oldIndex = schedules.findIndex((item) => item.id === active.id);
-    const itemBeingDragged = schedules[oldIndex];
-
-    // Check if the item being dragged is the currently running event
-    if (oldIndex === currentEventIndex && appSchedules.length > 0 && currentEventIndex < appSchedules.length) {
-      const currentEvent = appSchedules[currentEventIndex];
-
-      // Check if title and duration match (accounting for duration being in seconds in appSchedules)
-      if (currentEvent.title === itemBeingDragged.title && currentEvent.duration === itemBeingDragged.duration) {
-        toast.error("Cannot drag the currently running event", {
-          description: "Please wait for the event to finish or reset the timer before reordering.",
-        });
-        return; // Prevent the drag
-      }
-    }
-
     const newIndex = schedules.findIndex((item) => item.id === over.id);
 
-    // Preserve the original IDs when reordering
     const updatedSchedules = arrayMove(schedules, oldIndex, newIndex);
-    saveSchedules(updatedSchedules);
+    reorderSchedules(updatedSchedules);
   };
 
   return (
@@ -234,7 +172,7 @@ export default function ScheduleEntryPage({ currentEventIndex, appSchedules }: S
             <Button
               variant="default"
               className="w-full h-16 text-xl font-extrabold bg-primary hover:bg-primary/90 text-white rounded-[1.5rem] shadow-2xl shadow-primary/40 transition-all active:scale-[0.97] mt-10"
-              onClick={addSchedule}
+              onClick={handleAddSchedule}
             >
               Confirm Event
             </Button>
@@ -269,8 +207,8 @@ export default function ScheduleEntryPage({ currentEventIndex, appSchedules }: S
                       index={index}
                       key={event.id}
                       isActive={index === currentEventIndex}
-                      deleteSchedule={deleteSchedule}
-                      updateSchedule={updateSchedule}
+                      deleteSchedule={onDeleteSchedule}
+                      updateSchedule={onUpdateSchedule}
                     />
                   ))
                 )}

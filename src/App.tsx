@@ -10,8 +10,9 @@ import './App.css'
 import './index.css'
 
 interface ScheduleItem {
-  title: string,
-  duration: number
+  title: string;
+  duration: number;
+  id: string;
 }
 
 
@@ -43,12 +44,19 @@ function App() {
       const data: string = await invoke("load_schedules");
       const parsedSchedules = JSON.parse(data) as Array<ScheduleItem>;
       console.log("Schedules loaded:", parsedSchedules);
-      setSchedules(parsedSchedules);
 
-      if (parsedSchedules.length > 0) {
+      // Ensure all items have IDs (handling legacy data)
+      const sanitizedSchedules = parsedSchedules.map(item => ({
+        ...item,
+        id: item.id || `${item.title}-${item.duration}-${Math.random().toString(36).substring(2, 9)}`
+      }));
+
+      setSchedules(sanitizedSchedules);
+
+      if (sanitizedSchedules.length > 0) {
         // Set initial state based on the first event
         setCurrentEventIndex(0);
-        setTimeLeft(parsedSchedules[0].duration);
+        setTimeLeft(sanitizedSchedules[0].duration);
         setIsRunning(false); // Ensure timer is not running initially
         setIsTimeUp(false); // Ensure time is not up initially
       } else {
@@ -74,6 +82,83 @@ function App() {
   useEffect(() => {
     loadSchedules();
   }, [loadSchedules]);
+
+  const saveSchedulesToBackend = async (updatedSchedules: ScheduleItem[]) => {
+    try {
+      await invoke("save_schedules", { schedules: JSON.stringify(updatedSchedules) });
+    } catch (error) {
+      console.error("Failed to save schedules:", error);
+    }
+  };
+
+  const addSchedule = (title: string, durationInSeconds: number) => {
+    const newId = `${title}-${durationInSeconds}-${Date.now()}`;
+    const newSchedule: ScheduleItem = { title, duration: durationInSeconds, id: newId };
+    const updatedSchedules = [...schedules, newSchedule];
+    setSchedules(updatedSchedules);
+    saveSchedulesToBackend(updatedSchedules);
+
+    // If it's the first schedule, set as current
+    if (updatedSchedules.length === 1) {
+      setCurrentEventIndex(0);
+      setTimeLeft(durationInSeconds);
+    }
+  };
+
+  const deleteSchedule = (id: string) => {
+    const updatedSchedules = schedules.filter((item) => item.id !== id);
+    setSchedules(updatedSchedules);
+    saveSchedulesToBackend(updatedSchedules);
+
+    // If we're deleting the current event or an event before it, adjust the index
+    const deletedIndex = schedules.findIndex(item => item.id === id);
+    if (deletedIndex <= currentEventIndex && currentEventIndex > 0) {
+      setCurrentEventIndex(prev => prev - 1);
+    }
+
+    // Update timeLeft if the current event changed or was deleted
+    if (updatedSchedules.length === 0) {
+      setTimeLeft(0);
+      setCurrentEventIndex(0);
+    } else if (deletedIndex === currentEventIndex) {
+      // If we deleted the current event, we're now at a new event at the same index (or previous if it was the last)
+      const nextIndex = Math.min(currentEventIndex, updatedSchedules.length - 1);
+      setCurrentEventIndex(nextIndex);
+      setTimeLeft(updatedSchedules[nextIndex].duration);
+    }
+  };
+
+  const updateSchedule = (id: string, title: string, durationInSeconds: number) => {
+    const updatedSchedules = schedules.map((item) =>
+      item.id === id ? { ...item, title, duration: durationInSeconds } : item
+    );
+    setSchedules(updatedSchedules);
+    saveSchedulesToBackend(updatedSchedules);
+
+    // Update timeLeft if the current event was modified
+    const updatedItemIndex = schedules.findIndex(item => item.id === id);
+    if (updatedItemIndex === currentEventIndex) {
+      // Only update timeLeft if the timer is NOT running
+      if (!isRunning) {
+        setTimeLeft(durationInSeconds);
+      }
+    }
+  };
+
+  const reorderSchedules = (updatedSchedules: ScheduleItem[]) => {
+    setSchedules(updatedSchedules);
+    saveSchedulesToBackend(updatedSchedules);
+
+    // Recalculate current index based on the event that was previously current
+    // We'll use the ID to find its new position
+    const currentEventId = schedules[currentEventIndex]?.id;
+    if (currentEventId) {
+      const newIndex = updatedSchedules.findIndex(item => item.id === currentEventId);
+      if (newIndex !== -1) {
+        setCurrentEventIndex(newIndex);
+      }
+    }
+  };
 
 
   useEffect(() => {
@@ -313,7 +398,11 @@ function App() {
             element={
               <ScheduleEntryPage
                 currentEventIndex={currentEventIndex}
-                appSchedules={schedules}
+                schedules={schedules}
+                addSchedule={addSchedule}
+                deleteSchedule={deleteSchedule}
+                updateSchedule={updateSchedule}
+                reorderSchedules={reorderSchedules}
               />
             }
           />

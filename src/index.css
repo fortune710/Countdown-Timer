@@ -124,9 +124,7 @@
 }
 
 .glass-card {
-  @apply backdrop-blur-2xl bg-card border border-white/10 shadow-[0_8px_32px_0_rgba(0, 0, 0, 0.37)];
-  position: relative;
-  overflow: hidden;
+  @apply backdrop-blur-2xl bg-card border border-white/10;
 }
 
 .glass-card::before {

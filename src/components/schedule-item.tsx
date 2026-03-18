@@ -189,7 +189,7 @@ export function ScheduleCard(props: {
                 </div>
             </section>
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="glass-card border-white/10 bg-black/80 backdrop-blur-3xl text-white rounded-[2rem]">
+                <DialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-white/10 bg-black/80 backdrop-blur-3xl text-white rounded-[1rem] w-[95vw] max-w-lg z-[100]">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-bold">Edit Event</DialogTitle>
                         <DialogDescription className="text-zinc-400">
