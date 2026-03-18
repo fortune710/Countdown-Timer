@@ -1,10 +1,13 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import ScheduleEntryPage from './pages/schedule-entry'
 import TimerPage from './components/timer-layout'
+import ExternalTimerDisplay from './components/external-timer-display'
 
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { emit } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import './App.css'
 import './index.css'
@@ -34,6 +37,12 @@ function App() {
 
   //If current event is finished
   const [isTimeUp, setIsTimeUp] = useState(false);
+
+  //If external timer window is open
+  const [isExternalTimerOpen, setIsExternalTimerOpen] = useState(false);
+
+  //If this window is the external timer (hide nav bar)
+  const [isExternalWindow, setIsExternalWindow] = useState(false);
 
   //Number of seconds used after time up
   const [extraTimeUsed, setExtraTimeUsed] = useState(0);
@@ -77,6 +86,18 @@ function App() {
       setIsLoaded(true); // Mark as loaded even on error to show message
     }
   }, []); // Empty dependency array - load only once
+
+  // Detect if this is the external timer window
+  useEffect(() => {
+    try {
+      const win = getCurrentWindow();
+      if (win.label === 'external-timer') {
+        setIsExternalWindow(true);
+      }
+    } catch (e) {
+      console.error('Failed to detect window label:', e);
+    }
+  }, []);
 
   //Use these
   useEffect(() => {
@@ -366,7 +387,28 @@ function App() {
   // };
 
 
+  // Emit schedule-update event whenever the current event changes
+  // so the external timer window can stay in sync
+  useEffect(() => {
+    if (isLoaded && schedules.length > 0) {
+      emit('schedule-update', {
+        currentEventIndex,
+        schedules,
+      }).catch(console.error);
+    }
+  }, [currentEventIndex, schedules, isLoaded]);
 
+
+  // If this is the external timer window, render only the external display
+  if (isExternalWindow) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="*" element={<ExternalTimerDisplay />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
 
   return (
     <BrowserRouter>
@@ -420,9 +462,14 @@ function App() {
                 handlePlay={handlePlay}
                 resetSchedule={resetSchedule}
                 moveToNextEvent={moveToNextEvent}
-              // Pass any other needed state/functions
+                isExternalTimerOpen={isExternalTimerOpen}
+                onExternalTimerChange={setIsExternalTimerOpen}
               />
             }
+          />
+          <Route
+            path="/external-timer"
+            element={<ExternalTimerDisplay />}
           />
         </Routes>
       </div>

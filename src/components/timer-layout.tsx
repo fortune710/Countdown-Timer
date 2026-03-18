@@ -3,6 +3,7 @@ import { cn, convertSecondsToMinutes } from "@/lib/utils";
 import { Play, RotateCcw, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TimerLoadingSkeleton from "./timer-loading-skeleton";
+import ScreenExtendButton from "./screen-extend-button";
 
 // Keep the interface definition if needed locally, or import from App/types file
 interface ScheduleItem {
@@ -23,6 +24,8 @@ interface TimerPageProps {
   handlePlay: () => void;
   resetSchedule: () => void;
   moveToNextEvent: () => void;
+  isExternalTimerOpen: boolean;
+  onExternalTimerChange: (extended: boolean) => void;
 }
 
 // --- Use Props in the Component ---
@@ -36,7 +39,9 @@ export default function TimerPage({
   isTimeUp,
   handlePlay,
   resetSchedule,
-  moveToNextEvent
+  moveToNextEvent,
+  isExternalTimerOpen,
+  onExternalTimerChange
 }: TimerPageProps) {
 
   // --- Render Logic (Uses props now) ---
@@ -122,6 +127,13 @@ export default function TimerPage({
           >
             <StopCircle className="text-destructive/80 size-6" />
           </Button>
+
+          <div className="w-[1px] h-8 bg-white/10 mx-1" />
+
+          <ScreenExtendButton
+            isExtended={isExternalTimerOpen}
+            onExtendChange={onExternalTimerChange}
+          />
         </div>
 
         <footer className="pt-10 border-t border-white/5">
