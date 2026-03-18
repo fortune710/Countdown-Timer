@@ -149,7 +149,7 @@ export default function ExternalTimerDisplay() {
                     ) : isTimeUp ? (
                         <h1
                             className={cn(
-                                "text-[14rem] font-black tracking-tighter text-destructive leading-none uppercase animate-in zoom-in duration-500 drop-shadow-2xl shadow-destructive/20"
+                                "text-[14rem] font-black tracking-tighter text-destructive leading-none uppercase animate-in fade-in zoom-in-90 duration-200 ease-out drop-shadow-2xl shadow-destructive/20"
                             )}
                         >
                             TIME UP
