@@ -1,1 +1,1 @@
-[{"title":"Test 2","duration":15},{"title":"Event 4","duration":360},{"title":"Event 3","duration":180}]
+[{"title":"Event 4","duration":360,"id":"Event 4-360"},{"title":"Event 3","duration":2100,"id":"Event 3-2100"}]

@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { cn, convertSecondsToMinutes } from "@/lib/utils";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import TimerLoadingSkeleton from "@/components/timer-loading-skeleton";
 
 interface ScheduleItem {
     title: string,
@@ -19,6 +20,9 @@ export default function TimerPage() {
 
   //Number of seconds left
   const [timeLeft, setTimeLeft] = useState(0);
+
+  //Number of seconds used after time up
+  const [, setExtraTimeUsed] = useState(0);
 
   //If timer is running
   const [isRunning, setIsRunning] = useState(false);
@@ -98,6 +102,8 @@ export default function TimerPage() {
               // Timer received 0 but wasn't running (likely a reset signal)
               console.log("Timer at 0 but wasn't running. Ensuring isTimeUp=false.");
               // Ensure isTimeUp is false if we received 0 from a reset
+              const extraTime = payload;
+              setExtraTimeUsed(extraTime < 1 ? -1 * extraTime : extraTime);
               setIsTimeUp(false);
               return false; // Remain stopped
             }
@@ -180,27 +186,6 @@ export default function TimerPage() {
   }, [currentEventIndex, schedules, isRunning, isTimeUp, timeLeft]); // Added dependencies
 
 
-  const startTimer = (duration?: number) => {
-    const timeStart = schedules[currentEventIndex].duration;
-    invoke("start_timer", { seconds: duration ?? timeStart });
-    setIsRunning(true);
-  };
-
-  const moveToNextEvent = () => {
-    setIsRunning(false);
-    console.log("Current schedules:", schedules); // Add logging to debug
-    console.log("Current index:", currentEventIndex);
-
-    if (currentEventIndex < schedules.length - 1) {
-      const nextIndex = currentEventIndex + 1;
-      setCurrentEventIndex((prev) => prev + 1);
-
-      setTimeLeft(schedules[nextIndex].duration);
-      startTimer(schedules[nextIndex].duration);
-    } else {
-
-    }
-  };
 
   // const resetSchedule = () => {
   //   setIsRunning(false);
@@ -210,7 +195,7 @@ export default function TimerPage() {
   // };
 
   if (!isLoaded) {
-    return <div>Loading schedules...</div>;
+    return <TimerLoadingSkeleton/>
   }
 
   if (schedules.length === 0) {
@@ -230,7 +215,7 @@ export default function TimerPage() {
       <h1 className="text-2xl font-medium">Currently Happening</h1>
 
       <div className="my-10">
-        <h2 className="text-xl font-medium">{displayTitle}</h2>
+        <h2 className="text-3xl font-medium">{displayTitle}</h2>
         {/* Conditional Rendering for Time/TIME UP */}
         {isTimeUp ? (
           // Apply flashing class when time is up

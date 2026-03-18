@@ -12,6 +12,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ScheduleItem {
   title: string,
@@ -19,7 +22,17 @@ interface ScheduleItem {
   id: string
 }
 
-export default function ScheduleEntryPage() {
+interface AppScheduleItem {
+  title: string,
+  duration: number
+}
+
+interface ScheduleEntryPageProps {
+  currentEventIndex: number;
+  appSchedules: Array<AppScheduleItem>;
+}
+
+export default function ScheduleEntryPage({ currentEventIndex, appSchedules }: ScheduleEntryPageProps) {
   const [schedules, setSchedules] = useState<Array<ScheduleItem>>([]);
   const [newTitle, setNewTitle] = useState("");
   const [newDuration, setNewDuration] = useState("");
@@ -40,83 +53,231 @@ export default function ScheduleEntryPage() {
     setSchedules(schedules);
   };
 
-  const saveSchedules = async (updatedSchedules: any) => {
+  const saveSchedules = async (updatedSchedules: ScheduleItem[]) => {
+    setSchedules(updatedSchedules);
     await invoke("save_schedules", { schedules: JSON.stringify(updatedSchedules) });
-    loadSchedules(); // Refresh list
   };
 
   const addSchedule = () => {
-    if (newTitle && newDuration) {
-      const updatedSchedules = [...schedules, { title: newTitle, duration: Number(newDuration) * 60 }];
-      saveSchedules(updatedSchedules);
-      setNewTitle("");
-      setNewDuration("");
+    // Validation for title and duration
+    if (!newTitle.trim()) {
+      toast.error("Title is required.", {
+        description: "Please enter a title for the schedule item."
+      });
+      return;
     }
+
+    // Title uniqueness validation (optional, comment out if not wanted)
+    if (schedules.some(item => item.title.trim().toLowerCase() === newTitle.trim().toLowerCase())) {
+      toast.error("Title must be unique.", {
+        description: "A schedule item with this title already exists."
+      });
+      return;
+    }
+
+    if (!newDuration.trim()) {
+      toast.error("Duration is required.", {
+        description: "Please enter a duration in minutes."
+      });
+      return;
+    }
+
+    // Duration must be a positive integer and less than some max (e.g., 1440 minutes = 24 hours)
+    const durationNum = Number(newDuration);
+    if (
+      isNaN(durationNum) ||
+      !Number.isFinite(durationNum) ||
+      durationNum <= 0 ||
+      !/^\d+$/.test(newDuration.trim()) ||
+      durationNum > 1440
+    ) {
+      toast.error("Invalid duration.", {
+        description: "Please enter a valid duration in whole minutes (1-1440)."
+      });
+      return;
+    }
+
+    const updatedSchedules = [
+      ...schedules,
+      { title: newTitle.trim(), duration: durationNum * 60, id: `${newTitle.trim()}-${durationNum * 60}` }
+    ];
+    saveSchedules(updatedSchedules);
+    setNewTitle("");
+    setNewDuration("");
   };
 
   const deleteSchedule = (id: string) => {
+    // Find the index of the item being deleted
+    const itemIndex = schedules.findIndex((item) => item.id === id);
+
+    // Check if this item matches the currently running event
+    // Match by comparing title and duration with the current event in appSchedules
+    if (itemIndex === currentEventIndex && appSchedules.length > 0 && currentEventIndex < appSchedules.length) {
+      const currentEvent = appSchedules[currentEventIndex];
+      const itemToDelete = schedules[itemIndex];
+
+      // Check if title and duration match (accounting for duration being in seconds in appSchedules)
+      if (currentEvent.title === itemToDelete.title && currentEvent.duration === itemToDelete.duration) {
+        toast.error("Cannot delete the currently running event", {
+          description: "Please wait for the event to finish or reset the timer before deleting.",
+        });
+        return;
+      }
+    }
+
     const updatedSchedules = schedules.filter((item) => item.id !== id);
+    saveSchedules(updatedSchedules);
+  };
+
+  const updateSchedule = (id: string, title: string, duration: number) => {
+    const updatedSchedules = schedules.map((item) =>
+      item.id === id
+        ? { ...item, title, duration, id: `${title}-${duration}` }
+        : item
+    );
     saveSchedules(updatedSchedules);
   };
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
 
-    if (active.id !== over.id) {
-      const oldIndex = schedules.findIndex((item) => item.id === active.id);
-      const newIndex = schedules.findIndex((item) => item.id === over.id);
+    if (active.id === over.id) return;
 
-      const updatedSchedules = arrayMove(schedules, oldIndex, newIndex).map((item) => ({ title: item.title, duration: item.duration}))
-      saveSchedules(updatedSchedules);
+    const oldIndex = schedules.findIndex((item) => item.id === active.id);
+    const itemBeingDragged = schedules[oldIndex];
+
+    // Check if the item being dragged is the currently running event
+    if (oldIndex === currentEventIndex && appSchedules.length > 0 && currentEventIndex < appSchedules.length) {
+      const currentEvent = appSchedules[currentEventIndex];
+
+      // Check if title and duration match (accounting for duration being in seconds in appSchedules)
+      if (currentEvent.title === itemBeingDragged.title && currentEvent.duration === itemBeingDragged.duration) {
+        toast.error("Cannot drag the currently running event", {
+          description: "Please wait for the event to finish or reset the timer before reordering.",
+        });
+        return; // Prevent the drag
+      }
     }
+
+    const newIndex = schedules.findIndex((item) => item.id === over.id);
+
+    // Preserve the original IDs when reordering
+    const updatedSchedules = arrayMove(schedules, oldIndex, newIndex);
+    saveSchedules(updatedSchedules);
   };
 
   return (
     <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <main className="w-screen grid grid-cols-2 gap-2 h-screen">
-        <section className="pl-2">
-          <h1 className="text-center mb-3 font-medium">Event Scheduler</h1>
+      <main className="min-h-screen w-full flex items-center justify-center p-8 bg-noise text-foreground overflow-hidden">
+        <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-[420px_1fr] gap-10 h-[85vh]">
+          {/* Left Section: Form */}
+          <section className="glass-card rounded-[2.5rem] p-10 flex flex-col justify-between border-white/5 shadow-2xl">
+            <div className="flex-1">
+              <header className="mb-12">
+                <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center mb-6 border border-primary/20">
+                  <Clock className="w-6 h-6 text-primary" />
+                </div>
+                <h1 className="text-3xl font-extrabold tracking-tight text-white mb-3">Add Event</h1>
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  Design your day, one event at a time. Enter a title and select a duration.
+                </p>
+              </header>
 
-          <div className="space-y-4 px-6">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Event Title</Label>
-              <Input 
-                type="text" 
-                id="title" 
-                value={newTitle} 
-                onChange={(e) => setNewTitle(e.target.value)} 
-                placeholder="Event Title" 
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="duration">Duration (minutes)</Label>
-              <Input 
-                type="number" 
-                id="duration" 
-                value={newDuration} 
-                onChange={(e) => setNewDuration(e.target.value)} 
-                placeholder="Duration (minutes)" 
-              />
-            </div>
-            <Button variant="default" className="text-zinc-800 w-full" onClick={addSchedule}>Add Event</Button>
-          </div>
-        </section>
+              <div className="space-y-8">
+                <div className="space-y-3">
+                  <Label htmlFor="title" className="text-sm font-bold text-zinc-400 ml-1">Event Title</Label>
+                  <Input
+                    type="text"
+                    id="title"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="Focus Session, Lunch, Meeting..."
+                    className="bg-white/5 border-white/10 h-14 px-5 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-2xl text-lg font-medium placeholder:text-zinc-600 shadow-inner"
+                  />
+                </div>
 
-        <section className="pr-4">
-          <h3 className="font-medium text-center">Upcoming Events:</h3>
-          <ScrollArea className="h-[450px] mt-3 px-6">
-            <ul className="list-none">
-              {schedules.map((event, index) => (
-                <ScheduleCard 
-                  event={event} 
-                  index={index} 
-                  key={event.id}
-                  deleteSchedule={deleteSchedule} 
-                />
-              ))}
-            </ul>
-          </ScrollArea>
-        </section>
+                <div className="space-y-3">
+                  <Label htmlFor="duration" className="text-sm font-bold text-zinc-400 ml-1">Duration (minutes)</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      id="duration"
+                      value={newDuration}
+                      onChange={(e) => setNewDuration(e.target.value)}
+                      placeholder="15"
+                      className="bg-white/5 border-white/10 h-14 px-5 pr-12 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-2xl text-lg font-medium placeholder:text-zinc-600 shadow-inner"
+                    />
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-600">min</span>
+                  </div>
+
+                  {/* Quick select buttons */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {[5, 15, 30, 45, 60].map((mins) => (
+                      <button
+                        key={mins}
+                        onClick={() => setNewDuration(String(mins))}
+                        className={cn(
+                          "px-4 py-2 rounded-xl text-xs font-bold border transition-all active:scale-95",
+                          newDuration === String(mins)
+                            ? "bg-primary text-white border-primary shadow-lg shadow-primary/40 scale-[1.02]"
+                            : "bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10 hover:border-white/10"
+                        )}
+                      >
+                        {mins}m
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              variant="default"
+              className="w-full h-16 text-xl font-extrabold bg-primary hover:bg-primary/90 text-white rounded-[1.5rem] shadow-2xl shadow-primary/40 transition-all active:scale-[0.97] mt-10"
+              onClick={addSchedule}
+            >
+              Confirm Event
+            </Button>
+          </section>
+
+          {/* Right Section: List */}
+          <section className="glass-card rounded-[2.5rem] p-10 flex flex-col border-white/5 shadow-2xl">
+            <header className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-2xl font-extrabold text-white tracking-tight">Timeline</h3>
+                <p className="text-zinc-500 text-sm font-medium mt-1">Your upcoming sequence</p>
+              </div>
+              <div className="px-5 py-2 bg-primary/20 rounded-2xl border border-primary/20 text-xs font-black text-primary uppercase tracking-widest shadow-inner">
+                {schedules.length} Items
+              </div>
+            </header>
+
+            <ScrollArea className="flex-1 pr-4 -mr-4">
+              <ul className="space-y-4 pb-6">
+                {schedules.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full py-28 text-center bg-white/[0.02] rounded-[2rem] border-2 border-dashed border-white/[0.05]">
+                    <div className="w-16 h-16 rounded-full bg-primary/20 shadow-xl mb-6 flex items-center justify-center border border-primary/20 animate-bounce">
+                      <span className="text-2xl">⚡</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-white/40 mb-2">Clean Slate</h4>
+                    <p className="text-sm text-zinc-500 font-medium max-w-[200px]">Your timeline is empty. Start adding events to stay productive.</p>
+                  </div>
+                ) : (
+                  schedules.map((event, index) => (
+                    <ScheduleCard
+                      event={event}
+                      index={index}
+                      key={event.id}
+                      isActive={index === currentEventIndex}
+                      deleteSchedule={deleteSchedule}
+                      updateSchedule={updateSchedule}
+                    />
+                  ))
+                )}
+              </ul>
+            </ScrollArea>
+          </section>
+        </div>
       </main>
     </DndContext>
   );

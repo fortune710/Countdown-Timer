@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
 import './App.css'
+import './index.css'
 
 interface ScheduleItem {
   title: string,
@@ -32,6 +33,9 @@ function App() {
 
   //If current event is finished
   const [isTimeUp, setIsTimeUp] = useState(false);
+
+  //Number of seconds used after time up
+  const [extraTimeUsed, setExtraTimeUsed] = useState(0);
 
   const loadSchedules = useCallback(async () => {
     try {
@@ -86,6 +90,8 @@ function App() {
         // Always update the displayed time
         setTimeLeft(payload);
 
+
+
         // Use functional updates for isRunning and isTimeUp
         // to ensure we're working with the latest state values
         setIsRunning(currentIsRunning => {
@@ -109,9 +115,10 @@ function App() {
             // Payload > 0 (timer is ticking down)
             if (currentIsRunning) {
               // Timer ticking normally, ensure isTimeUp is false
-               console.log("Timer ticking > 0. Ensuring isTimeUp=false.");
-               setIsTimeUp(false);
-               return true; // Remain running
+              console.log("Timer ticking > 0. Ensuring isTimeUp=false.");
+              console.log({ timeLeft: payload });
+              setIsTimeUp(false);
+              return true; // Remain running
             } else {
               // Received > 0 but wasn't running. This is unusual.
               // Could happen if the start command was slightly delayed relative to the first tick.
@@ -136,6 +143,23 @@ function App() {
     // No dependencies needed here, as we use functional update for isRunning check
   }, []);
 
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (isTimeUp) {
+      intervalId = setInterval(() => {
+        setExtraTimeUsed((prevExtraTimeUsed) => prevExtraTimeUsed + 1);
+      }, 1000);
+    }
+
+    return () => {
+      if (intervalId) {
+        setExtraTimeUsed(0);
+        clearInterval(intervalId);
+      }
+    };
+  }, [isTimeUp]);
+
   // Handles starting the timer for the correct event (current or next)
   const handlePlay = useCallback(() => {
     if (isRunning) {
@@ -146,6 +170,7 @@ function App() {
     let eventIndexToStart = currentEventIndex;
     let durationToStart: number | undefined;
 
+    console.log({ isTimeUp })
     // If the previous event just finished, move to the next one
     if (isTimeUp) {
       if (currentEventIndex < schedules.length - 1) {
@@ -197,6 +222,35 @@ function App() {
     }
   }, [schedules]); // Depends on schedules
 
+  const moveToNextEvent = useCallback(() => {
+    console.log("App: moveToNextEvent called");
+    if (currentEventIndex < schedules.length - 1) {
+      const nextIndex = currentEventIndex + 1;
+      const nextDuration = schedules[nextIndex]?.duration;
+
+      if (nextDuration !== undefined && nextDuration > 0) {
+        console.log(`App: Moving to index ${nextIndex}`);
+        // 1. Update the index state
+        // 2. Tell the backend to start the new timer (backend handles stopping the old one)
+        invoke("reset_timer");
+        setTimeLeft(0)
+        setIsTimeUp(true);
+
+        // --- REMOVED ---
+        // setTimeLeft(nextDuration); // Let listener handle this from backend event
+        // setIsRunning(true);       // Let listener handle this from backend event
+        // setIsTimeUp(false);      // Listener handles this too
+      } else {
+        console.warn(`App: Cannot move to next event, invalid duration for index ${nextIndex}`);
+      }
+    } else {
+      console.log("App: Already at the last event.");
+      // Optionally reset or show completion message
+      alert("Last event finished or skipped.");
+      resetSchedule(); // Example: Reset after last event is skipped
+    }
+  }, [currentEventIndex, schedules, resetSchedule]);
+
   // const startTimer = (duration?: number) => {
   //   const timeStart = schedules[currentEventIndex].duration;
   //   invoke("start_timer", { seconds: duration ?? timeStart });
@@ -231,29 +285,58 @@ function App() {
 
   return (
     <BrowserRouter>
-      <nav className='w-full flex items-center justify-center gap-4 py-3'>
-        <Link className='font-medium' to="/">Schedule Entry</Link> | <Link className='font-medium' to="/timer">Timer</Link>
-      </nav>
-      
-      <Routes>
-        <Route path="/" element={<ScheduleEntryPage />} />
-        <Route 
-          path="/timer" 
-          element={
-            <TimerPage
-              schedules={schedules}
-              currentEventIndex={currentEventIndex}
-              timeLeft={timeLeft}
-              isRunning={isRunning}
-              isLoaded={isLoaded}
-              isTimeUp={isTimeUp}
-              handlePlay={handlePlay}
-              resetSchedule={resetSchedule}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+        <nav className="glass-card px-2 py-2 rounded-2xl flex items-center gap-1 border-white/10 shadow-2xl shadow-black/40">
+          <Link
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-white/5 active:scale-95 flex items-center gap-2"
+            to="/"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            Schedule
+          </Link>
+          <div className="w-[1px] h-4 bg-white/10" />
+          <Link
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-white/5 active:scale-95 flex items-center gap-2"
+            to="/timer"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+            Timer
+          </Link>
+        </nav>
+      </div>
+
+      <div className="pt-16">
+        <Routes>
+
+          <Route
+            path="/"
+            element={
+              <ScheduleEntryPage
+                currentEventIndex={currentEventIndex}
+                appSchedules={schedules}
+              />
+            }
+          />
+          <Route
+            path="/timer"
+            element={
+              <TimerPage
+                schedules={schedules}
+                currentEventIndex={currentEventIndex}
+                extraTime={extraTimeUsed}
+                timeLeft={timeLeft}
+                isRunning={isRunning}
+                isLoaded={isLoaded}
+                isTimeUp={isTimeUp}
+                handlePlay={handlePlay}
+                resetSchedule={resetSchedule}
+                moveToNextEvent={moveToNextEvent}
               // Pass any other needed state/functions
-            />
-          } 
-        />
-      </Routes>
+              />
+            }
+          />
+        </Routes>
+      </div>
     </BrowserRouter>
   )
 }
