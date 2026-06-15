@@ -106,36 +106,36 @@ export default function ScheduleEntryPage({
 
   return (
     <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <main className="min-h-screen w-full flex items-center justify-center p-8 bg-noise text-foreground overflow-hidden">
-        <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-[420px_1fr] gap-10 h-[85vh]">
+      <main className="min-h-screen w-full flex flex-col items-center justify-start p-4 md:p-8 bg-noise text-foreground overflow-y-auto overflow-x-hidden">
+        <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 md:gap-10 h-auto lg:h-[85vh] py-24 lg:py-0">
           {/* Left Section: Form */}
-          <section className="glass-card rounded-[2.5rem] p-10 flex flex-col justify-between border-white/5 shadow-2xl">
+          <section className="glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 flex flex-col justify-between border-white/5 shadow-2xl relative overflow-visible">
             <div className="flex-1">
-              <header className="mb-12">
-                <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center mb-6 border border-primary/20">
-                  <Clock className="w-6 h-6 text-primary" />
+              <header className="mb-6 md:mb-12">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-primary/20 rounded-2xl flex items-center justify-center mb-4 md:mb-6 border border-primary/20">
+                  <Clock className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 </div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-white mb-3">Add Event</h1>
-                <p className="text-zinc-400 text-sm leading-relaxed">
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white mb-2 md:mb-3">Add Event</h1>
+                <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">
                   Design your day, one event at a time. Enter a title and select a duration.
                 </p>
               </header>
 
-              <div className="space-y-8">
-                <div className="space-y-3">
-                  <Label htmlFor="title" className="text-sm font-bold text-zinc-400 ml-1">Event Title</Label>
+              <div className="space-y-6 md:space-y-8">
+                <div className="space-y-2 md:space-y-3">
+                  <Label htmlFor="title" className="text-xs md:text-sm font-bold text-zinc-400 ml-1">Event Title</Label>
                   <Input
                     type="text"
                     id="title"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     placeholder="Focus Session, Lunch, Meeting..."
-                    className="bg-white/5 border-white/10 h-14 px-5 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-2xl text-lg font-medium placeholder:text-zinc-600 shadow-inner"
+                    className="bg-white/5 border-white/10 h-12 md:h-14 px-4 md:px-5 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-xl md:rounded-2xl text-base md:text-lg font-medium placeholder:text-zinc-600 shadow-inner"
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <Label htmlFor="duration" className="text-sm font-bold text-zinc-400 ml-1">Duration (minutes)</Label>
+                <div className="space-y-2 md:space-y-3">
+                  <Label htmlFor="duration" className="text-xs md:text-sm font-bold text-zinc-400 ml-1">Duration (minutes)</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -143,9 +143,9 @@ export default function ScheduleEntryPage({
                       value={newDuration}
                       onChange={(e) => setNewDuration(e.target.value)}
                       placeholder="15"
-                      className="bg-white/5 border-white/10 h-14 px-5 pr-12 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-2xl text-lg font-medium placeholder:text-zinc-600 shadow-inner"
+                      className="bg-white/5 border-white/10 h-12 md:h-14 px-4 md:px-5 pr-12 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-xl md:rounded-2xl text-base md:text-lg font-medium placeholder:text-zinc-600 shadow-inner"
                     />
-                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-600">min</span>
+                    <span className="absolute right-4 md:right-5 top-1/2 -translate-y-1/2 text-xs md:text-sm font-bold text-zinc-600">min</span>
                   </div>
 
                   {/* Quick select buttons */}
@@ -171,7 +171,7 @@ export default function ScheduleEntryPage({
 
             <Button
               variant="default"
-              className="w-full h-16 text-xl font-extrabold bg-primary hover:bg-primary/90 text-white rounded-[1.5rem] shadow-2xl shadow-primary/40 transition-all active:scale-[0.97] mt-10"
+              className="w-full h-14 md:h-16 text-lg md:text-xl font-extrabold bg-primary hover:bg-primary/90 text-white rounded-xl md:rounded-[1.5rem] shadow-2xl shadow-primary/40 transition-all active:scale-[0.97] mt-6 md:mt-10"
               onClick={handleAddSchedule}
             >
               Confirm Event
@@ -179,18 +179,18 @@ export default function ScheduleEntryPage({
           </section>
 
           {/* Right Section: List */}
-          <section className="glass-card rounded-[2.5rem] p-10 flex flex-col border-white/5 shadow-2xl">
-            <header className="flex items-center justify-between mb-8">
+          <section className="glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 flex flex-col border-white/5 shadow-2xl overflow-hidden h-auto lg:h-full min-h-[500px]">
+            <header className="flex items-center justify-between mb-6 md:mb-8">
               <div>
-                <h3 className="text-2xl font-extrabold text-white tracking-tight">Timeline</h3>
-                <p className="text-zinc-500 text-sm font-medium mt-1">Your upcoming sequence</p>
+                <h3 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">Timeline</h3>
+                <p className="text-zinc-500 text-xs md:text-sm font-medium mt-1">Your upcoming sequence</p>
               </div>
               <div className="px-5 py-2 bg-primary/20 rounded-2xl border border-primary/20 text-xs font-black text-primary uppercase tracking-widest shadow-inner">
                 {schedules.length} Items
               </div>
             </header>
 
-            <ScrollArea className="flex-1 pr-4 -mr-4">
+            <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
               <ul className="space-y-4 pb-6">
                 {schedules.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full py-28 text-center bg-white/[0.02] rounded-[2rem] border-2 border-dashed border-white/[0.05]">

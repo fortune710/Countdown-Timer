@@ -412,18 +412,18 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
-        <nav className="glass-card px-2 py-2 rounded-2xl flex items-center gap-1 border-white/10 shadow-2xl shadow-black/40">
+      <div className="fixed top-4 md:top-6 left-1/2 -translate-x-1/2 z-50 w-auto">
+        <nav className="glass-card px-1.5 py-1.5 md:px-2 md:py-2 rounded-2xl flex items-center gap-1 border-white/10 shadow-2xl shadow-black/40">
           <Link
-            className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-white/5 active:scale-95 flex items-center gap-2"
+            className="px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[10px] md:text-sm font-semibold transition-all hover:bg-white/5 active:scale-95 flex items-center gap-1.5 md:gap-2 whitespace-nowrap"
             to="/"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             Schedule
           </Link>
-          <div className="w-[1px] h-4 bg-white/10" />
+          <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
           <Link
-            className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-white/5 active:scale-95 flex items-center gap-2"
+            className="px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[10px] md:text-sm font-semibold transition-all hover:bg-white/5 active:scale-95 flex items-center gap-1.5 md:gap-2 whitespace-nowrap"
             to="/timer"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
@@ -432,7 +432,7 @@ function App() {
         </nav>
       </div>
 
-      <div className="pt-16">
+      <div className="pt-12 md:pt-16">
         <Routes>
 
           <Route
