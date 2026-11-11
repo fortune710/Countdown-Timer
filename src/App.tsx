@@ -1,12 +1,12 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import { CalendarBlank, Timer } from '@phosphor-icons/react'
 import ScheduleEntryPage from './pages/schedule-entry'
 import TimerPage from './components/timer-layout'
 import ExternalTimerDisplay from './components/external-timer-display'
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { emit } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import './App.css'
@@ -20,6 +20,7 @@ interface ScheduleItem {
 
 
 function App() {
+  const isExternalDisplay = window.location.pathname === '/external-timer';
   // List of events with title and duration
   const [schedules, setSchedules] = useState<Array<ScheduleItem>>([]);
 
@@ -46,6 +47,8 @@ function App() {
 
   //Number of seconds used after time up
   const [extraTimeUsed, setExtraTimeUsed] = useState(0);
+  const externalSnapshot = useRef({ schedules, currentEventIndex, timeLeft, isRunning, isTimeUp, extraTimeUsed });
+  externalSnapshot.current = { schedules, currentEventIndex, timeLeft, isRunning, isTimeUp, extraTimeUsed };
 
   const loadSchedules = useCallback(async () => {
     try {
@@ -101,8 +104,8 @@ function App() {
 
   //Use these
   useEffect(() => {
-    loadSchedules();
-  }, [loadSchedules]);
+    if (!isExternalDisplay) loadSchedules();
+  }, [loadSchedules, isExternalDisplay]);
 
   const saveSchedulesToBackend = async (updatedSchedules: ScheduleItem[]) => {
     try {
@@ -183,6 +186,7 @@ function App() {
 
 
   useEffect(() => {
+    if (isExternalDisplay) return;
     console.log("Setting up timer listener.");
     let isMounted = true;
 
@@ -247,9 +251,10 @@ function App() {
       cleanupPromise.then(unlisten => unlisten()); // Detach listener
     };
     // No dependencies needed here, as we use functional update for isRunning check
-  }, []);
+  }, [isExternalDisplay]);
 
   useEffect(() => {
+    if (isExternalDisplay) return;
     let intervalId: NodeJS.Timeout | null = null;
 
     if (isTimeUp) {
@@ -264,7 +269,7 @@ function App() {
         clearInterval(intervalId);
       }
     };
-  }, [isTimeUp]);
+  }, [isTimeUp, isExternalDisplay]);
 
   // Handles starting the timer for the correct event (current or next)
   const handlePlay = useCallback(() => {
@@ -287,7 +292,7 @@ function App() {
       } else {
         console.log("Time up on last event, cannot start next.");
         // Optionally reset or show a final message
-        alert("All events completed!");
+        alert("The order of service is complete!");
         //resetSchedule(); // Reset to beginning after acknowledging completion
         return; // Don't proceed to start timer
       }
@@ -352,7 +357,7 @@ function App() {
     } else {
       console.log("App: Already at the last event.");
       // Optionally reset or show completion message
-      alert("Last event finished or skipped.");
+      alert("The final service moment is complete.");
       resetSchedule(); // Example: Reset after last event is skipped
     }
   }, [currentEventIndex, schedules, resetSchedule]);
@@ -387,20 +392,29 @@ function App() {
   // };
 
 
-  // Emit schedule-update event whenever the current event changes
-  // so the external timer window can stay in sync
+  // A newly created external window requests a full snapshot after its listener is ready.
   useEffect(() => {
-    if (isLoaded && schedules.length > 0) {
-      emit('schedule-update', {
-        currentEventIndex,
-        schedules,
-      }).catch(console.error);
+    if (isExternalDisplay) return;
+    let isMounted = true;
+    const listener = listen('external-timer-ready', () => {
+      if (isMounted) emitTo('external-timer', 'schedule-update', externalSnapshot.current).catch(console.error);
+    });
+    return () => {
+      isMounted = false;
+      listener.then(unlisten => unlisten());
+    };
+  }, [isExternalDisplay]);
+
+  // Keep an already open display in sync when the schedule changes or is reopened.
+  useEffect(() => {
+    if (!isExternalDisplay && isLoaded && isExternalTimerOpen) {
+      emitTo('external-timer', 'schedule-update', externalSnapshot.current).catch(console.error);
     }
-  }, [currentEventIndex, schedules, isLoaded]);
+  }, [currentEventIndex, schedules, isLoaded, isExternalTimerOpen, isExternalDisplay]);
 
 
   // If this is the external timer window, render only the external display
-  if (isExternalWindow) {
+  if (isExternalWindow || window.location.pathname === '/external-timer') {
     return (
       <BrowserRouter>
         <Routes>
@@ -412,27 +426,7 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="fixed top-4 md:top-6 left-1/2 -translate-x-1/2 z-50 w-auto">
-        <nav className="glass-card px-1.5 py-1.5 md:px-2 md:py-2 rounded-2xl flex items-center gap-1 border-white/10 shadow-2xl shadow-black/40">
-          <Link
-            className="px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[10px] md:text-sm font-semibold transition-all hover:bg-white/5 active:scale-95 flex items-center gap-1.5 md:gap-2 whitespace-nowrap"
-            to="/"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            Schedule
-          </Link>
-          <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
-          <Link
-            className="px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[10px] md:text-sm font-semibold transition-all hover:bg-white/5 active:scale-95 flex items-center gap-1.5 md:gap-2 whitespace-nowrap"
-            to="/timer"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-            Timer
-          </Link>
-        </nav>
-      </div>
-
-      <div className="pt-12 md:pt-16">
+      <div className="app-shell">
         <Routes>
 
           <Route
@@ -473,6 +467,16 @@ function App() {
           />
         </Routes>
       </div>
+      <nav className="bottom-tabs" aria-label="Main navigation">
+        <NavLink to="/" end className={({ isActive }) => `bottom-tab ${isActive ? 'is-active' : ''}`}>
+          <CalendarBlank size={22} weight="regular" aria-hidden="true" />
+          <span>Service</span>
+        </NavLink>
+        <NavLink to="/timer" className={({ isActive }) => `bottom-tab ${isActive ? 'is-active' : ''}`}>
+          <Timer size={22} weight="regular" aria-hidden="true" />
+          <span>Timer</span>
+        </NavLink>
+      </nav>
     </BrowserRouter>
   )
 }

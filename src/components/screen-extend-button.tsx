@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Monitor, MonitorOff } from "lucide-react";
+import { Monitor, MonitorArrowUp } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -79,17 +79,17 @@ export default function ScreenExtendButton({ isExtended, onExtendChange }: Scree
             onClick={handleToggle}
             disabled={isLoading}
             className={cn(
-                "w-16 h-16 rounded-3xl border-white/5 transition-all active:scale-90",
+                "w-12 h-12 rounded-lg border-border transition-all active:scale-90",
                 isExtended
-                    ? "bg-primary/20 hover:bg-primary/30 border-primary/30 hover:border-primary/40 text-primary"
-                    : "bg-white/5 hover:bg-white/10 hover:border-white/10"
+                    ? "bg-accent hover:bg-accent border-border text-secondary"
+                    : "bg-card hover:bg-accent hover:border-border"
             )}
             title={isExtended ? "Stop extending to second screen" : "Extend timer to second screen"}
         >
             {isExtended ? (
-                <MonitorOff className="size-6" />
+<MonitorArrowUp className="size-6" />
             ) : (
-                <Monitor className="size-6 text-white/60" />
+                <Monitor className="size-6 text-secondary" />
             )}
         </Button>
     );

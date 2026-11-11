@@ -1,9 +1,12 @@
 // Removed listen as listener is now in App
 import { cn, convertSecondsToMinutes } from "@/lib/utils";
-import { Play, RotateCcw, StopCircle } from "lucide-react";
+import { Play, ArrowCounterClockwise, StopCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import TimerLoadingSkeleton from "./timer-loading-skeleton";
 import ScreenExtendButton from "./screen-extend-button";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
+import { CalendarBlank } from "@phosphor-icons/react";
+import { Link } from "react-router-dom";
 
 // Keep the interface definition if needed locally, or import from App/types file
 interface ScheduleItem {
@@ -52,7 +55,7 @@ export default function TimerPage({
 
   if (schedules.length === 0) {
     // Use schedules prop
-    return <div>No schedules found. Please go to the Schedule Entry page to add some events.</div>;
+    return <main className="timer-page"><header className="page-heading"><div><p className="page-eyebrow">SUNDAY SERVICE</p><h1>Service timer</h1><p>Keep each moment of worship on time.</p></div></header><Empty className="timer-empty"><EmptyMedia><CalendarBlank size={24} /></EmptyMedia><EmptyHeader><EmptyTitle>The service timer is ready</EmptyTitle><EmptyDescription>Add a moment to the order of service to begin.</EmptyDescription></EmptyHeader><EmptyContent><Button asChild><Link to="/">Plan the service</Link></Button></EmptyContent></Empty></main>;
   }
 
   // Use props for calculations and display
@@ -62,97 +65,17 @@ export default function TimerPage({
   const isPlayDisabled = isRunning;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[90vh] p-4 md:p-8 text-center bg-noise">
-      <div className="glass-card rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-16 w-full max-w-4xl border-white/5 shadow-2xl shadow-black/40">
-        <header className="mb-8 md:mb-12">
-          <div className="px-4 md:px-6 py-1.5 md:py-2 bg-primary/20 rounded-full border border-primary/20 inline-block text-[10px] md:text-xs font-black text-primary uppercase tracking-[0.2em] mb-4 shadow-inner">
-            Current Session
-          </div>
-          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            {displayTitle}
-          </h2>
-        </header>
-
-        <div className="my-8 md:my-16 relative">
-          {/* Subtle glow behind time */}
-          <div className="absolute inset-0 bg-primary/10 blur-[80px] md:blur-[120px] rounded-full -z-10" />
-
-          {extraTime > 5 ? (
-            <h1 className={cn("text-[6rem] md:text-[10rem] lg:text-[12rem] font-black tracking-tighter text-destructive leading-none tabular-nums drop-shadow-2xl shadow-destructive/20")}>
-              -{convertSecondsToMinutes(Number(extraTime))}
-            </h1>
-          ) : isTimeUp ? (
-            <h1 className={cn("text-[5rem] md:text-[8rem] lg:text-[10rem] font-black tracking-tighter text-destructive leading-none uppercase animate-in fade-in zoom-in-90 duration-200 ease-out drop-shadow-2xl shadow-destructive/20")}>
-              TIME UP
-            </h1>
-          ) : (
-            <h1 className={cn(
-              "text-[6rem] md:text-[10rem] lg:text-[12rem] font-black tracking-tighter leading-none tabular-nums transition-all duration-700 drop-shadow-2xl",
-              timeLeft <= 300 && timeLeft > 0 ? "text-destructive shadow-destructive/20" : "text-white shadow-primary/20"
-            )}>
-              {convertSecondsToMinutes(Number(timeLeft))}
-            </h1>
-          )}
+    <main className="timer-page">
+      <header className="page-heading"><div><p className="page-eyebrow">SUNDAY SERVICE</p><h1>Service timer</h1><p>Guide the gathering, one moment at a time.</p></div><span className="page-count">{currentEventIndex + 1} / {schedules.length}</span></header>
+      <section className="timer-workspace" aria-label="Current service timer">
+        <div className="timer-main">
+          <div className="timer-topline"><span className="section-index">CURRENT MOMENT / {String(currentEventIndex + 1).padStart(2, "0")}</span><span className={cn("timer-status", isRunning && "is-running")}>{isRunning ? "Running" : isTimeUp ? "Time up" : "Ready"}</span></div>
+          <h2 className="timer-event-title">{displayTitle}</h2>
+          <div className={cn("timer-digits", (isTimeUp || (timeLeft <= 300 && timeLeft > 0)) && "is-urgent")} role="timer" aria-live="off">{extraTime > 5 ? `-${convertSecondsToMinutes(Number(extraTime))}` : isTimeUp ? "TIME UP" : convertSecondsToMinutes(Number(timeLeft))}</div>
+          <div className="timer-controls"><Button onClick={handlePlay} disabled={isPlayDisabled} aria-label="Start timer" className="timer-primary-control"><Play size={20} weight="fill" />{isRunning ? "Running" : isTimeUp ? "Start next moment" : "Start timer"}</Button><Button variant="outline" onClick={resetSchedule} aria-label="Reset service timer"><ArrowCounterClockwise size={20} />Reset</Button><Button variant="outline" onClick={moveToNextEvent} aria-label="Skip to next service moment"><StopCircle size={20} />Skip</Button></div>
         </div>
-
-        <div className="flex items-center justify-center gap-4 md:gap-6 mb-8 md:mb-16 scale-90 md:scale-100">
-          <Button
-            size="lg"
-            onClick={handlePlay}
-            disabled={isPlayDisabled}
-            className={cn(
-              "w-16 h-16 md:w-20 md:h-20 rounded-full shadow-2xl transition-all active:scale-90",
-              isPlayDisabled
-                ? "bg-white/5 text-zinc-600 cursor-not-allowed border-white/5"
-                : "bg-primary hover:bg-primary/90 text-white shadow-primary/40 border-none"
-            )}
-          >
-            <Play className="size-8 md:size-10 fill-current ml-1" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={resetSchedule}
-            className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-3xl border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 transition-all active:scale-90"
-          >
-            <RotateCcw className="text-white/60 size-5 md:size-6" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={moveToNextEvent}
-            className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-3xl border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 transition-all active:scale-90"
-          >
-            <StopCircle className="text-destructive/80 size-5 md:size-6" />
-          </Button>
-
-          <div className="w-[1px] h-6 md:h-8 bg-white/10 mx-0.5 md:mx-1" />
-
-          <ScreenExtendButton
-            isExtended={isExternalTimerOpen}
-            onExtendChange={onExternalTimerChange}
-          />
-        </div>
-
-        <footer className="pt-10 border-t border-white/5">
-          <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-4">Next Event</h3>
-          {canStartNext ? (
-            <div className="flex items-center justify-center gap-3 group">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary/40 group-hover:bg-primary transition-colors" />
-              <p className="text-2xl font-extrabold text-white tracking-tight">
-                {schedules[currentEventIndex + 1].title}
-              </p>
-            </div>
-          ) : (
-            <p className="text-lg font-bold text-zinc-600 italic">
-              Timeline Complete
-            </p>
-          )}
-        </footer>
-      </div>
-    </div>
-
+        <aside className="timer-side"><div><span className="section-index">NEXT IN SERVICE</span><h3>{canStartNext ? schedules[currentEventIndex + 1].title : "Service complete"}</h3><p>{canStartNext ? "The next part of the service is ready when this moment ends." : "You have reached the end of the order of service."}</p></div><div className="external-control"><span className="section-index">PROJECTOR DISPLAY</span><ScreenExtendButton isExtended={isExternalTimerOpen} onExtendChange={onExternalTimerChange} /></div></aside>
+      </section>
+    </main>
   );
 }

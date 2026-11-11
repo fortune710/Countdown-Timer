@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { cn, convertSecondsToMinutes } from "@/lib/utils";
-import { Play } from "lucide-react";
+import { Play } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import TimerLoadingSkeleton from "@/components/timer-loading-skeleton";
 
