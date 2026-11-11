@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Play, RotateCcw } from "lucide-react";
+import { Play, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { Skeleton } from "@/components/ui/skeleton"; // Import the Skeleton component
 
 export default function TimerLoadingSkeleton() {
@@ -27,7 +27,7 @@ export default function TimerLoadingSkeleton() {
         </Button>
         <Button variant="outline" size="icon" disabled className="opacity-50 cursor-not-allowed">
           {/* <Skeleton className="h-6 w-6 rounded-full" /> */}
-           <RotateCcw className="text-gray-400 size-6" />
+<ArrowCounterClockwise className="text-gray-400 size-6" />
         </Button>
       </div>
 

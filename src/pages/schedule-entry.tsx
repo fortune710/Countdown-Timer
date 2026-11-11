@@ -1,19 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DndContext,
   closestCenter,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
+  arrayMove, SortableContext, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ScheduleCard, ScheduleItem } from "../components/schedule-item";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScheduleCard } from "../components/schedule-item";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Clock } from "lucide-react";
+import { CalendarBlank, Clock } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
 
 interface ScheduleItem {
   title: string,
@@ -40,26 +42,45 @@ export default function ScheduleEntryPage({
 }: ScheduleEntryPageProps) {
   const [newTitle, setNewTitle] = useState("");
   const [newDuration, setNewDuration] = useState("");
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const updateClock = () => setNow(new Date());
+    const interval = window.setInterval(updateClock, 15_000);
+    window.addEventListener("focus", updateClock);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", updateClock);
+    };
+  }, []);
+
+  const totalDurationSeconds = schedules.reduce((total, moment) => total + moment.duration, 0);
+  const estimatedEnd = new Date(now.getTime() + totalDurationSeconds * 1000);
+  const estimatedEndLabel = new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(estimatedEnd);
 
   const handleAddSchedule = () => {
     // Validation for title and duration
     if (!newTitle.trim()) {
-      toast.error("Title is required.", {
-        description: "Please enter a title for the schedule item."
+      toast.error("Moment title is required.", {
+        description: "Give this part of the service a title."
       });
       return;
     }
 
     // Title uniqueness validation (optional)
     if (schedules.some(item => item.title.trim().toLowerCase() === newTitle.trim().toLowerCase())) {
-      toast.error("Title must be unique.", {
-        description: "A schedule item with this title already exists."
+      toast.error("Moment title must be unique.", {
+        description: "A service moment with this title already exists."
       });
       return;
     }
 
     if (!newDuration.trim()) {
-      toast.error("Duration is required.", {
+      toast.error("Moment duration is required.", {
         description: "Please enter a duration in minutes."
       });
       return;
@@ -106,114 +127,52 @@ export default function ScheduleEntryPage({
 
   return (
     <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <main className="min-h-screen w-full flex flex-col items-center justify-start p-4 md:p-8 bg-noise text-foreground overflow-y-auto overflow-x-hidden">
-        <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 md:gap-10 h-auto lg:h-[85vh] py-24 lg:py-0">
-          {/* Left Section: Form */}
-          <section className="glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 flex flex-col justify-between border-white/5 shadow-2xl relative overflow-visible">
-            <div className="flex-1">
-              <header className="mb-6 md:mb-12">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-primary/20 rounded-2xl flex items-center justify-center mb-4 md:mb-6 border border-primary/20">
-                  <Clock className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+      <main className="schedule-page">
+        <header className="page-heading">
+          <div><p className="page-eyebrow">SUNDAY SERVICE</p><h1>Order of service</h1><p>Plan each moment of worship and keep the service flowing.</p></div>
+          {schedules.length > 0 && (
+            <Card className="estimated-end-card">
+              <CardContent className="estimated-end-content">
+                <div className="estimated-end-icon"><Clock size={20} aria-hidden="true" /></div>
+                <div className="estimated-end-copy">
+                  <span className="section-index">ESTIMATED SERVICE END</span>
+                  <strong>{estimatedEndLabel}</strong>
                 </div>
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white mb-2 md:mb-3">Add Event</h1>
-                <p className="text-zinc-400 text-xs md:text-sm leading-relaxed">
-                  Design your day, one event at a time. Enter a title and select a duration.
-                </p>
-              </header>
-
-              <div className="space-y-6 md:space-y-8">
-                <div className="space-y-2 md:space-y-3">
-                  <Label htmlFor="title" className="text-xs md:text-sm font-bold text-zinc-400 ml-1">Event Title</Label>
-                  <Input
-                    type="text"
-                    id="title"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Focus Session, Lunch, Meeting..."
-                    className="bg-white/5 border-white/10 h-12 md:h-14 px-4 md:px-5 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-xl md:rounded-2xl text-base md:text-lg font-medium placeholder:text-zinc-600 shadow-inner"
-                  />
-                </div>
-
-                <div className="space-y-2 md:space-y-3">
-                  <Label htmlFor="duration" className="text-xs md:text-sm font-bold text-zinc-400 ml-1">Duration (minutes)</Label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      id="duration"
-                      value={newDuration}
-                      onChange={(e) => setNewDuration(e.target.value)}
-                      placeholder="15"
-                      className="bg-white/5 border-white/10 h-12 md:h-14 px-4 md:px-5 pr-12 focus-visible:ring-primary/40 focus-visible:border-primary/50 transition-all rounded-xl md:rounded-2xl text-base md:text-lg font-medium placeholder:text-zinc-600 shadow-inner"
-                    />
-                    <span className="absolute right-4 md:right-5 top-1/2 -translate-y-1/2 text-xs md:text-sm font-bold text-zinc-600">min</span>
-                  </div>
-
-                  {/* Quick select buttons */}
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {[5, 15, 30, 45, 60].map((mins) => (
-                      <button
-                        key={mins}
-                        onClick={() => setNewDuration(String(mins))}
-                        className={cn(
-                          "px-4 py-2 rounded-xl text-xs font-bold border transition-all active:scale-95",
-                          newDuration === String(mins)
-                            ? "bg-primary text-white border-primary shadow-lg shadow-primary/40 scale-[1.02]"
-                            : "bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10 hover:border-white/10"
-                        )}
-                      >
-                        {mins}m
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              variant="default"
-              className="w-full h-14 md:h-16 text-lg md:text-xl font-extrabold bg-primary hover:bg-primary/90 text-white rounded-xl md:rounded-[1.5rem] shadow-2xl shadow-primary/40 transition-all active:scale-[0.97] mt-6 md:mt-10"
-              onClick={handleAddSchedule}
-            >
-              Confirm Event
-            </Button>
+              </CardContent>
+            </Card>
+          )}
+        </header>
+        <div className="schedule-workspace">
+          <section className="schedule-form-panel" aria-labelledby="add-event-heading">
+            <div className="section-heading"><span className="section-index">01 / PLAN</span><h2 id="add-event-heading">Add a moment</h2><p>Set the flow for worship, prayer, teaching, and more.</p></div>
+            <form onSubmit={(event) => { event.preventDefault(); handleAddSchedule(); }} className="schedule-form">
+              <div className="field-group"><Label htmlFor="title">Moment title</Label><Input id="title" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="e.g. Opening worship" /></div>
+              <div className="field-group"><Label htmlFor="duration">Duration <span className="field-hint">in minutes</span></Label><Input id="duration" type="number" min="1" max="1440" value={newDuration} onChange={(event) => setNewDuration(event.target.value)} placeholder="15" /></div>
+              <div className="duration-options" aria-label="Quick duration selection">{[5, 15, 30, 45, 60].map((mins) => <button key={mins} type="button" onClick={() => setNewDuration(String(mins))} className={cn("duration-option", newDuration === String(mins) && "is-selected")}>{mins} min</button>)}</div>
+              <Button type="submit" className="schedule-submit">Add to service</Button>
+            </form>
           </section>
-
-          {/* Right Section: List */}
-          <section className="glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 flex flex-col border-white/5 shadow-2xl overflow-hidden h-auto lg:h-full min-h-[500px]">
-            <header className="flex items-center justify-between mb-6 md:mb-8">
-              <div>
-                <h3 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">Timeline</h3>
-                <p className="text-zinc-500 text-xs md:text-sm font-medium mt-1">Your upcoming sequence</p>
-              </div>
-              <div className="px-5 py-2 bg-primary/20 rounded-2xl border border-primary/20 text-xs font-black text-primary uppercase tracking-widest shadow-inner">
-                {schedules.length} Items
-              </div>
-            </header>
-
-            <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
-              <ul className="space-y-4 pb-6">
-                {schedules.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full py-28 text-center bg-white/[0.02] rounded-[2rem] border-2 border-dashed border-white/[0.05]">
-                    <div className="w-16 h-16 rounded-full bg-primary/20 shadow-xl mb-6 flex items-center justify-center border border-primary/20 animate-bounce">
-                      <span className="text-2xl">⚡</span>
-                    </div>
-                    <h4 className="text-lg font-bold text-white/40 mb-2">Clean Slate</h4>
-                    <p className="text-sm text-zinc-500 font-medium max-w-[200px]">Your timeline is empty. Start adding events to stay productive.</p>
-                  </div>
-                ) : (
-                  schedules.map((event, index) => (
-                    <ScheduleCard
-                      event={event}
-                      index={index}
-                      key={event.id}
-                      isActive={index === currentEventIndex}
-                      deleteSchedule={onDeleteSchedule}
-                      updateSchedule={onUpdateSchedule}
-                    />
-                  ))
-                )}
-              </ul>
-            </ScrollArea>
+          <section className="timeline-panel" aria-labelledby="timeline-heading">
+            <div className="timeline-heading"><div><span className="section-index">02 / ORDER OF WORSHIP</span><h2 id="timeline-heading">Service flow</h2></div><span className="timeline-total">{schedules.length} {schedules.length === 1 ? "moment" : "moments"}</span></div>
+            {schedules.length === 0 ? (
+              <Empty className="timeline-empty">
+                <EmptyMedia><CalendarBlank size={24} /></EmptyMedia>
+                <EmptyHeader><EmptyTitle>No service moments yet</EmptyTitle><EmptyDescription>Add worship, prayer, a message, or any other part of Sunday service.</EmptyDescription></EmptyHeader>
+                <EmptyContent><Button type="button" variant="outline" onClick={() => document.getElementById("title")?.focus()}>Add the first moment</Button></EmptyContent>
+              </Empty>
+            ) : (
+              <ScrollArea className="timeline-scroll-area">
+                <SortableContext items={schedules.map((event) => event.id)} strategy={verticalListSortingStrategy}>
+                  <ul className="timeline-list">
+                    {schedules.map((event, index) => (
+                      <li key={event.id}>
+                        <ScheduleCard event={event} index={index} isActive={index === currentEventIndex} deleteSchedule={onDeleteSchedule} updateSchedule={onUpdateSchedule} />
+                      </li>
+                    ))}
+                  </ul>
+                </SortableContext>
+              </ScrollArea>
+            )}
           </section>
         </div>
       </main>
